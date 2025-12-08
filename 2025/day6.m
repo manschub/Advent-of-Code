@@ -1,83 +1,91 @@
 clc; clearvars;
 % Advent of code 2025 - day 6 - part 1+2
 % Open file and take needed data
-file_id = fopen("day6_test.dat");
-data = textscan(file_id,strcat('%s'),'delimiter',', ','MultipleDelimsAsOne',1);
+file_id = fopen("day6.dat");
+data = textscan(file_id,'%s','delimiter','\n', 'whitespace', '');
 % Close file
 fclose(file_id);
 
 % Rearrange data
-id_i = 0; 
 for i = 1:size(data{1,1},1)
-    [~,col] = find(data{1,1}{i,1}=='-');
-    if (~isempty(col))
-        range_s(i) = str2double(data{1,1}{i,1}(1:col-1));
-        range_f(i) = str2double(data{1,1}{i,1}(col+1:end));
+    if (i==size(data{1,1},1))
+        % Operators
+        ops = regexp(data{1,1}{i,1},'(\s*)','split');
     else
-        id_i = id_i+1;
-        ingr(id_i) = str2double(data{1,1}{i,1});
+        % Numbers
+        nums = regexp(data{1,1}{i,1},'(\s*)','split');
+        for j = 1:length(nums)
+            % Make and array
+            if (~isempty(nums{1,j}))
+                num_mat(i,j) = str2double(nums{1,j});
+            end
+        end
+        if (num_mat(i,1)==0)
+            num_mat(i,1:end-1) = num_mat(i,2:end);
+            num_mat(i,end) = 0;
+        end
     end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Part 1 - Check which ingredients are fresh
+% Part 1 - Perform the math equations
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic
-
 result1 = 0;
-% Go through ingredients and check if they are in any of the fresh ranges
-for i = 1:length(ingr)
-    % Check for all ranges
-    for j = 1:length(range_s)
-        if (ingr(i)>=range_s(j)&&ingr(i)<=range_f(j))
-            % Fresh
-            result1 = result1+1;
-            break
-        end        
+% Go through each equation
+for i = 1:size(num_mat,2)
+    % Check which operator
+    if (ops{1,i}=='+')
+        result1 = result1+sum(num_mat(:,i));
+    else
+        result1 = result1+prod(num_mat(:,i));
     end
 end
-
 fprintf('%10f',result1)
 fprintf('\n')
 toc
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Part 2 - Now we need to find all possible fresh ingredient IDs
+% Part 2 - Now we need to rearrange the digits in a weird way
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic
-
 result2 = 0;
-% It's too large of a number to just put all in an array so let's try to be
-% a little more clever
-% What if we sort the ranges starting with the lowest start
-[range_s,idx] = sort(range_s);
-range_f = range_f(idx);
-% Now go through them
-for i = 1:length(range_s)
-    % First one is just included completely
-    if (i==1)
-        result2 = result2+(range_f(i)-range_s(i)+1);
-        % For all other ones we need to check if the start is larger than
-        % the end of the previous range
-    elseif (range_s(i)<=range_f(i-1))
-        % If that's the case we replace the end of the last range with the
-        % start of the current one
-        range_s(i) = range_f(i-1)+1;
-        % If this new range start is now bigger than the end of the range
-        % we can skip it completely
-        if (range_s(i)>=range_f(i))
-            range_f(i)=range_s(i)-1;
-            continue
-        else
-            % Otherwise, we add the remaining range
-            result2 = result2+(range_f(i)-range_s(i)+1);
-        end
+% We start doing the same, but we go through the raw data
+% Go through each equation
+step = 1;
+% But now for each equation we first need to arrange the numbers in
+% cephalopod way - First find the position of the operators so we know the 
+% ranges to consider for our numbers
+[~,cols] = find(data{1,1}{end,1}=='+'|data{1,1}{end,1}=='*');
+for i = 1:length(cols)
+    % We need to find the numbers
+   if (i<length(cols))
+       col_s = cols(i); col_f = cols(i+1);
+       j = col_f-2;
+   else
+       col_s = cols(i); col_f = size(data{1,1}{1,1},2);
+       j = col_f;
+   end
+   % Now we go through the columns from right to left to assemble our
+   % numbers
+   idx = 0;
+   nums2 = [];
+   for k = j:-1:col_s
+       idx = idx+1;
+       tmp = '';
+       for l = 1:size(data{1,1},1)-1
+            tmp = strcat(tmp,data{1,1}{l,1}(k));
+       end
+       nums2(idx) = str2double(tmp);
+   end
+   % Check which operator
+    if (ops{1,step}=='+')
+        result2 = result2+sum(nums2);
     else
-        % Otherwise, we add the remaining range
-        result2 = result2+(range_f(i)-range_s(i)+1);
+        result2 = result2+prod(nums2);
     end
+    step = step+1;
 end
-
 fprintf('%10f',result2)
 fprintf('\n')
 toc

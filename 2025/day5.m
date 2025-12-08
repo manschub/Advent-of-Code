@@ -60,10 +60,10 @@ for i = 1:length(range_s)
         % For all other ones we need to check if the start is larger than
         % the end of the previous range
     elseif (range_s(i)<=range_f(i-1))
-        % If that's the case we replace the end of the last range with the
-        % start of the current one
+        % If that's the case we replace the start of the current one with the end of the last range 
+		% plus 1 (so we don't count the last value twice)
         range_s(i) = range_f(i-1)+1;
-        % If this new range start is now bigger than the end of the range
+        % If this new range start is now equal or bigger than the end of the range
         % we can skip it completely
         if (range_s(i)>=range_f(i))
             range_f(i)=range_s(i)-1;
