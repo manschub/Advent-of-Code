@@ -1,170 +1,107 @@
 clc; clearvars;
 % Advent of code 2025 - day 9 - part 1+2
 % Open file and take needed data
-file_id = fopen("day9_test.dat");
-data = textscan(file_id,'%f %f %f','delimiter',', ','MultipleDelimsAsOne',1);
+file_id = fopen("day9.dat");
+data = textscan(file_id,'%f %f','delimiter',', ','MultipleDelimsAsOne',1);
 % Close file
 fclose(file_id);
 
 % Rearrange data
-x = data{1,1}; y = data{1,2}; z = data{1,3};
+pos = [data{1,1},data{1,2}]; 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Part 1 - We need to find closest connections between junctions
+% Part 1 - We need to find the two opposite corners of tiles that create
+% the largest possible rectangle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic
-circuit = []; matches = []; cnt = 0;
-% Get all distances
-for i = 1:length(x)
-    % Calculate distance to all other junctions 
-    for j = i+1:length(x)
-        dist(i,j) = sqrt((x(j)-x(i))^2 + (y(j)-y(i))^2 + (z(j)-z(i))^2);
-    end
-end
-dist(dist==0) = 99999999999999999999;
-dist_min = 0;
-% Go through junctions
-while (cnt<1000)
-    [dist_min,pos] = min(dist(dist(:)>dist_min));
-    [tmp(1),tmp(2)] = find(dist==dist_min);
-    % Check if we already have this combination in a circuit
-    if (~isempty(matches))
-        if (any(matches(:,1)==tmp(1) & matches(:,2)==tmp(2)))
-            % We already have that connection
-            continue
-        end
-    end
-    % Store connection
-    matches(end+1,1:2) = tmp;
-    if (isempty(circuit))
-        circuit = tmp;
-        cnt = cnt+1;
-    else
-        % Check if we have a circuit with one of the partners already
-        [rowi,coli] = find(circuit==tmp(1));
-        [rowj,colj] = find(circuit==tmp(2));
-        test = 0;
-        for l=1:length(rowi)
-            if (any(rowj==rowi(l)))
-                test=1;
-                break
-            end
-        end
-        if (~isempty(rowi) && ~isempty(rowj) && test == 1) 
-            cnt = cnt+1;
-        elseif (~isempty(rowi) && ~isempty(rowj))
-            % We need to merge
-            circuit(:,end+1:size(circuit,2)*2) = 0;
-            circuit(rowi,:) = [circuit(rowi,1:size(circuit,2)/2), ...
-                circuit(rowj,1:size(circuit,2)/2)];
-            circuit(rowj,:) = [];
-            cnt = cnt+1;
-        elseif(~isempty(rowi))
-            circuit(rowi,end+1) = tmp(2);
-            cnt = cnt+1;
-        elseif(~isempty(rowj))
-            circuit(rowj,end+1) = tmp(1);
-            cnt = cnt+1;
-        else
-            circuit(end+1,:) = 0;
-            circuit(end,1:2) = tmp;
-            cnt = cnt+1;
-        end 
-    end
-    [cols] = find(all(circuit==0));
-    if (~isempty(cols))
-        circuit(:,cols) = [];
-    end
-end
-% Now calculate the result multiplying the length of the junctions
-result1 = 0;
-tmp_circ = circuit~=0;
-for i = 1:size(circuit,1)
-    cnt_junc(i) = sum(tmp_circ(i,:));
-end
-for i = 1:3
-    [val,idx] = max(cnt_junc);
-    if (i==1)
-        result1 = val;
-    else
-        result1 = result1*val;
-    end
-    cnt_junc(idx)=[];
-end
 
+rect_area = 0;
+% We have to try all
+for i = 1:size(pos,1)
+    % Calculate area of current paired corners 
+    for j = i+1:size(pos,1)
+        tmp = (max(pos(i,1),pos(j,1))-min(pos(i,1),pos(j,1))+1)* ...
+                (max(pos(i,2),pos(j,2))-min(pos(i,2),pos(j,2))+1);
+        % If it's larger than our current largest we store new largest
+        if (rect_area < tmp)
+            rect_area = tmp;
+        end
+    end
+end
+result1 = rect_area;
+% 4769758290
 fprintf('%10f',result1)
 fprintf('\n')
 toc
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Part 2 - We need to connect stuff until all are in one circuit
+% Part 2 - Now it's a bit more complicated, but we still have to find the
+% largest area
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic
-finished = 0;
-% Continue where we stopped
-while (finished~=1)
-    [dist_min,pos] = min(dist(dist(:)>dist_min));
-    [tmp(1),tmp(2)] = find(dist==dist_min);
-    % Check if we already have this combination in a circuit
-    if (~isempty(matches))
-        if (any(matches(:,1)==tmp(1) & matches(:,2)==tmp(2)))
-            % We already have that connection
+
+% We basically do the same, but we have to do an additional check if the
+% tiles of the rectangle are all green or red - are within the area span by
+% all red tiles
+rect_area = 0;
+rg = polyshape(pos);
+is_inside = @(ps1,ps2)abs(area(ps2)-area(subtract(ps2,ps1))- ...
+    area(ps1))<(area(ps1)*1e-06);
+% We have to try all
+for i = 1:size(pos,1)
+    % Calculate area of current paired corners 
+    for j = i+1:size(pos,1)
+        % We can skip immediately if our area is smaller than our current
+        % max
+        if ((max(pos(i,1),pos(j,1))-min(pos(i,1),pos(j,1))+1)* ...
+                (max(pos(i,2),pos(j,2))-min(pos(i,2),pos(j,2))+1) < rect_area)
             continue
         end
-    end
-    % Store connection
-    matches(end+1,1:2) = tmp;
-    if (isempty(circuit))
-        circuit = tmp;
-        cnt = cnt+1;
-    else
-        % Check if we have a circuit with one of the partners already
-        [rowi,coli] = find(circuit==tmp(1));
-        [rowj,colj] = find(circuit==tmp(2));
-        test = 0;
-        for l=1:length(rowi)
-            if (any(rowj==rowi(l)))
-                test=1;
-                break
+        % Otherwise, check
+        if (max(pos(i,2),pos(j,2))-min(pos(i,2),pos(j,2))>0 ...
+                && max(pos(i,1),pos(j,1))-min(pos(i,1),pos(j,1))>0)
+            % Create second polygon
+            % x-coordinates (bottom-left, bottom-right, top-right, top-left)
+            x_rect = [min(pos(i,1),pos(j,1)),max(pos(i,1),pos(j,1)), ...
+                max(pos(i,1),pos(j,1)),min(pos(i,1),pos(j,1))]; 
+            % y-coordinates
+            y_rect = [min(pos(i,2),pos(j,2)),min(pos(i,2),pos(j,2)), ...
+                max(pos(i,2),pos(j,2)),max(pos(i,2),pos(j,2))]; 
+            % Create the polyshape object
+            rect = polyshape(x_rect, y_rect);
+            % Now check if second poly is within first
+            inarea = is_inside(rect,rg);
+            if (inarea==0)
+                continue
+            end
+        else
+            % First we need to check now where the coordinates of this
+            % rectangle would be
+            x = min(pos(i,1),pos(j,1)):max(pos(i,1),pos(j,1));
+            y = min(pos(i,2),pos(j,2)):max(pos(i,2),pos(j,2));
+            [xvals,yvals] = meshgrid(x,y);
+            xvals = xvals(:);
+            yvals = yvals(:);
+            % Check if all the values of this area are within our red green
+            % area
+            inarea = 1;
+            [in,on] = inpolygon(xvals,yvals,rg.Vertices(:,1),rg.Vertices(:,2));    
+            if (min(in+on)<1)
+                inarea = 0;
+                continue
             end
         end
-        if (~isempty(rowi) && ~isempty(rowj) && test == 1) 
-            cnt = cnt+1;
-        elseif (~isempty(rowi) && ~isempty(rowj))
-            % We need to merge
-            circuit(:,end+1:size(circuit,2)*2) = 0;
-            circuit(rowi,:) = [circuit(rowi,1:size(circuit,2)/2), ...
-                circuit(rowj,1:size(circuit,2)/2)];
-            circuit(rowj,:) = [];
-            cnt = cnt+1;
-        elseif(~isempty(rowi))
-            circuit(rowi,end+1) = tmp(2);
-            cnt = cnt+1;
-        elseif(~isempty(rowj))
-            circuit(rowj,end+1) = tmp(1);
-            cnt = cnt+1;
-        else
-            circuit(end+1,:) = 0;
-            circuit(end,1:2) = tmp;
-            cnt = cnt+1;
-        end 
-    end
-    [cols] = find(all(circuit==0));
-    if (~isempty(cols))
-        circuit(:,cols) = [];
-    end
-    % Check if we have everything within one circuit
-    if (size(circuit,1)==1)
-        circuit(circuit==0) = [];
-        if (size(circuit,2)==size(x,1))
-            finished = 1;
+        tmp = (max(pos(i,1),pos(j,1))-min(pos(i,1),pos(j,1))+1)* ...
+                (max(pos(i,2),pos(j,2))-min(pos(i,2),pos(j,2))+1);
+        % If it's larger than our current largest we store new largest
+        if (rect_area < tmp)
+            rect_area = tmp;
         end
     end
 end
-% Now calculate the result multiplying the length of the junctions
-% Multiply the x coordinates of the last two boxes
-result2 = x(tmp(1))*x(tmp(2));
-
+result2 = rect_area;
+% 1588990708
 fprintf('%10f',result2)
 fprintf('\n')
 toc
+
