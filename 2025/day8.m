@@ -13,7 +13,7 @@ x = data{1,1}; y = data{1,2}; z = data{1,3};
 % Part 1 - We need to find closest connections between junctions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic
-circuit = []; matches = []; cnt = 0;
+circuit = []; cnt = 0;
 % Get all distances
 for i = 1:length(x)
     % Calculate distance to all other junctions 
@@ -25,24 +25,16 @@ dist(dist==0) = 99999999999999999999;
 dist_min = 0;
 % Go through junctions
 while (cnt<1000)
-    [dist_min,pos] = min(dist(dist(:)>dist_min));
+    dist_min = min(dist(dist(:)>dist_min));
     [tmp(1),tmp(2)] = find(dist==dist_min);
-    % Check if we already have this combination in a circuit
-    if (~isempty(matches))
-        if (any(matches(:,1)==tmp(1) & matches(:,2)==tmp(2)))
-            % We already have that connection
-            continue
-        end
-    end
     % Store connection
-    matches(end+1,1:2) = tmp;
     if (isempty(circuit))
         circuit = tmp;
         cnt = cnt+1;
     else
         % Check if we have a circuit with one of the partners already
-        [rowi,coli] = find(circuit==tmp(1));
-        [rowj,colj] = find(circuit==tmp(2));
+        [rowi,~] = find(circuit==tmp(1));
+        [rowj,~] = find(circuit==tmp(2));
         test = 0;
         for l=1:length(rowi)
             if (any(rowj==rowi(l)))
@@ -91,7 +83,7 @@ for i = 1:3
     end
     cnt_junc(idx)=[];
 end
-
+% 164475
 fprintf('%10f',result1)
 fprintf('\n')
 toc
@@ -103,52 +95,39 @@ tic
 finished = 0;
 % Continue where we stopped
 while (finished~=1)
-    [dist_min,pos] = min(dist(dist(:)>dist_min));
+    dist_min = min(dist(dist(:)>dist_min));
     [tmp(1),tmp(2)] = find(dist==dist_min);
-    % Check if we already have this combination in a circuit
-    if (~isempty(matches))
-        if (any(matches(:,1)==tmp(1) & matches(:,2)==tmp(2)))
-            % We already have that connection
-            continue
+    % Store connection
+    % Check if we have a circuit with one of the partners already
+    [rowi,~] = find(circuit==tmp(1));
+    [rowj,~] = find(circuit==tmp(2));
+    test = 0;
+    for l=1:length(rowi)
+        if (any(rowj==rowi(l)))
+            test=1;
+            break
         end
     end
-    % Store connection
-    matches(end+1,1:2) = tmp;
-    if (isempty(circuit))
-        circuit = tmp;
+    if (~isempty(rowi) && ~isempty(rowj) && test == 1) 
+        cnt = cnt+1;
+    elseif (~isempty(rowi) && ~isempty(rowj))
+        % We need to merge
+        circuit(:,end+1:size(circuit,2)*2) = 0;
+        circuit(rowi,:) = [circuit(rowi,1:size(circuit,2)/2), ...
+            circuit(rowj,1:size(circuit,2)/2)];
+        circuit(rowj,:) = [];
+        cnt = cnt+1;
+    elseif(~isempty(rowi))
+        circuit(rowi,end+1) = tmp(2);
+        cnt = cnt+1;
+    elseif(~isempty(rowj))
+        circuit(rowj,end+1) = tmp(1);
         cnt = cnt+1;
     else
-        % Check if we have a circuit with one of the partners already
-        [rowi,coli] = find(circuit==tmp(1));
-        [rowj,colj] = find(circuit==tmp(2));
-        test = 0;
-        for l=1:length(rowi)
-            if (any(rowj==rowi(l)))
-                test=1;
-                break
-            end
-        end
-        if (~isempty(rowi) && ~isempty(rowj) && test == 1) 
-            cnt = cnt+1;
-        elseif (~isempty(rowi) && ~isempty(rowj))
-            % We need to merge
-            circuit(:,end+1:size(circuit,2)*2) = 0;
-            circuit(rowi,:) = [circuit(rowi,1:size(circuit,2)/2), ...
-                circuit(rowj,1:size(circuit,2)/2)];
-            circuit(rowj,:) = [];
-            cnt = cnt+1;
-        elseif(~isempty(rowi))
-            circuit(rowi,end+1) = tmp(2);
-            cnt = cnt+1;
-        elseif(~isempty(rowj))
-            circuit(rowj,end+1) = tmp(1);
-            cnt = cnt+1;
-        else
-            circuit(end+1,:) = 0;
-            circuit(end,1:2) = tmp;
-            cnt = cnt+1;
-        end 
-    end
+        circuit(end+1,:) = 0;
+        circuit(end,1:2) = tmp;
+        cnt = cnt+1;
+    end 
     [cols] = find(all(circuit==0));
     if (~isempty(cols))
         circuit(:,cols) = [];
@@ -164,7 +143,7 @@ end
 % Now calculate the result multiplying the length of the junctions
 % Multiply the x coordinates of the last two boxes
 result2 = x(tmp(1))*x(tmp(2));
-
+% 169521198
 fprintf('%10f',result2)
 fprintf('\n')
 toc
